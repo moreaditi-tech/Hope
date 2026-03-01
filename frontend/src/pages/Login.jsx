@@ -9,7 +9,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // 🔥 VERY IMPORTANT
+    e.preventDefault(); // VERY IMPORTANT
 
     try {
       const res = await axios.post("http://localhost:5000/api/auth/login", {

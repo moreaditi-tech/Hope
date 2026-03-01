@@ -1,81 +1,93 @@
 const express = require("express");
 const router = express.Router();
-const Donate = require("../models/Donate");
+const multer = require("multer");
 
-/* -----------------------------
-   ADD DONATION
-------------------------------*/
-router.post("/", async (req, res) => {
+const {
+  addFood,
+  getAllFood,
+  getMyDonations,
+} = require("../controllers/donateController");
+
+const Food = require("../models/Food");
+
+/* IMAGE UPLOAD */
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) =>
+    cb(null, Date.now() + "-" + file.originalname),
+});
+
+const upload = multer({ storage });
+
+/* ADD FOOD */
+router.post("/", upload.single("image"), addFood);
+
+/* GET ALL FOOD */
+router.get("/", getAllFood);
+
+/* GET MY FOOD */
+router.get("/my/:userId", getMyDonations);
+
+/* DELETE FOOD */
+router.delete("/:id", async (req, res) => {
   try {
-    const {
-      foodName,
-      quantity,
-      expiryDate,
-      location,
-      description,
-      category,
-    } = req.body;
-
-    const newDonate = new Donate({
-      foodName,
-      quantity,
-      expiryDate,
-      location,
-      description,
-      category,
-      status: "available",
-    });
-
-    await newDonate.save();
-
-    res.status(201).json({
-      message: "Food donated successfully",
-      data: newDonate,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    await Food.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    console.error("DELETE ERROR:", err);
+    res.status(500).json({ message: "Delete failed" });
   }
 });
 
-/* -----------------------------
-   GET ALL DONATIONS
-------------------------------*/
-router.get("/", async (req, res) => {
+/* GET SINGLE FOOD */
+router.get("/find/:id", async (req, res) => {
   try {
-    const donations = await Donate.find().sort({ createdAt: -1 });
-    res.status(200).json(donations);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const food = await Food.findById(req.params.id).populate("userId", "name email");
+    if (!food) return res.status(404).json({ message: "Food not found" });
+    res.json(food);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-/* -----------------------------
-   ORDER FOOD
-------------------------------*/
+/* GET MY ORDERED FOOD (Receiver) */
+router.get("/myorders/:userId", async (req, res) => {
+  try {
+    const orders = await Food.find({ receiverId: req.params.userId })
+      .populate("userId", "name email")
+      .sort({ updatedAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    console.error("GET MY ORDERS ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+/* ORDER FOOD */
 router.put("/order/:id", async (req, res) => {
   try {
-    const food = await Donate.findById(req.params.id);
+    const { receiverId } = req.body; // Expect receiverId
+    const food = await Food.findById(req.params.id);
 
     if (!food) {
       return res.status(404).json({ message: "Food not found" });
     }
 
-    if (food.status === "ordered") {
-      return res.status(400).json({ message: "Food already ordered" });
+    if (food.ordered) {
+      return res.status(400).json({ message: "Already ordered" });
     }
 
-    food.status = "ordered";
-    food.orderMessage = "Someone is coming to take the food";
+    food.ordered = true;
+    if (receiverId) food.receiverId = receiverId; // Save Receiver
 
     await food.save();
 
-    res.status(200).json({
-      message: "Order placed successfully",
-      food,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ message: "Order successful", food });
+  } catch (err) {
+    console.error("ORDER ERROR:", err);
+    res.status(500).json({ message: `Order failed: ${err.message}` });
   }
 });
 
 module.exports = router;
+

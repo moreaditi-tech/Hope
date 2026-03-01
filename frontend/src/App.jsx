@@ -12,6 +12,9 @@ import Donate from "./pages/Donate";
 import Order from "./pages/Order";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Profile from "./pages/profile";
+import MyOrders from "./pages/MyOrders"; // ADDED
+import VolunteerDashboard from "./pages/VolunteerDashboard";
 
 /* Donate Dashboard & Forms */
 import DonateDashboard from "./donate/DonateDashboard";
@@ -27,13 +30,42 @@ import NonVegFood from "./order/NonVegFood";
 import Drinks from "./order/Drinks";
 import Snacks from "./order/Snacks";
 import Celebration from "./order/Celebration";
+import Chat from "./pages/Chat";
+import DonorMessages from "./pages/DonorMessages";
+
+import { useState, useEffect } from "react";
+import io from "socket.io-client";
+import NotificationToast from "./components/NotificationToast";
+
+const socket = io.connect("http://localhost:5000");
 
 function App() {
+  const [notification, setNotification] = useState(null);
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  useEffect(() => {
+    if (user?._id) {
+      socket.emit("register_user", user._id);
+    }
+
+    socket.on("notification", (data) => {
+      setNotification(data.text);
+    });
+
+    return () => {
+      socket.off("notification");
+    };
+  }, [user?._id]);
   return (
     <LanguageProvider>
       <Router>
         <Navbar />
-
+        {notification && (
+          <NotificationToast
+            message={notification}
+            onClose={() => setNotification(null)}
+          />
+        )}
         <Routes>
           {/* MAIN ROUTES */}
           <Route path="/" element={<Home />} />
@@ -58,6 +90,13 @@ function App() {
           <Route path="/order/drinks" element={<Drinks />} />
           <Route path="/order/snacks" element={<Snacks />} />
           <Route path="/order/celebration" element={<Celebration />} />
+
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/my-orders" element={<MyOrders />} /> {/* ADDED */}
+          <Route path="/volunteer" element={<VolunteerDashboard />} />
+          <Route path="/chat/:foodId" element={<Chat />} />
+          <Route path="/donor/messages" element={<DonorMessages />} />
+
         </Routes>
 
         <Footer />

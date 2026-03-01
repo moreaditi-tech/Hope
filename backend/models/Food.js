@@ -6,15 +6,43 @@ const foodSchema = new mongoose.Schema(
     quantity: { type: Number, required: true },
     expiryDate: { type: Date },
     location: { type: String, required: true },
+    latitude: { type: Number },
+    longitude: { type: Number },
     message: { type: String },
+
     type: {
       type: String,
       enum: ["veg", "nonveg", "drinks", "snacks", "celebration"],
       required: true,
     },
+
     ordered: {
       type: Boolean,
-      default: false, // 👈 VERY IMPORTANT
+      default: false,
+    },
+
+    // ADD THIS
+    image: {
+      type: String,
+      default: null,
+    },
+
+    cookedTime: { type: Date },
+    consumeBy: { type: Date },
+    allergens: { type: String },
+
+    // user connection
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    // ADD THIS
+    receiverId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
   },
   { timestamps: true }

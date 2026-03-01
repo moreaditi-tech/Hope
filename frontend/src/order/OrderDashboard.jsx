@@ -16,7 +16,7 @@ const OrderDashboard = () => {
 
   const orderFood = async (id) => {
     await axios.post(`http://localhost:5000/api/order/${id}`);
-    alert("Food ordered successfully 🍽️");
+    alert("Food ordered successfully ");
     fetchFood();
   };
 

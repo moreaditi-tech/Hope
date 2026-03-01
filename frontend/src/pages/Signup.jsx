@@ -116,10 +116,11 @@ const Signup = () => {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500"
+                className="w-full p-3 border rounded mb-3"
               >
-                <option value="Donor">Donor</option>
-                <option value="Receiver">Receiver</option>
+                <option value="donor">Donor</option>
+                <option value="receiver">Receiver</option>
+                <option value="volunteer">Volunteer 🚚</option>
               </select>
             </div>
 

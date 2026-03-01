@@ -2,42 +2,76 @@ import { useState } from "react";
 import axios from "axios";
 
 const AddSnacks = () => {
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     foodName: "",
     quantity: "",
     expiryDate: "",
     location: "",
     message: "",
+    cookedTime: "",
+    consumeBy: "",
+    allergens: "",
+    latitude: null,
+    longitude: null,
   });
 
+  const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  // logged-in user
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+
+    if (!user?._id) {
+      alert("Please login first");
+      return;
+    }
 
     try {
-      await axios.post("http://localhost:5000/api/donate", {
-        ...formData,
-        category: "snacks",
-      });
+      setLoading(true);
 
-      alert("Snacks donated successfully ");
+      const data = new FormData();
+      data.append("foodName", form.foodName);
+      data.append("quantity", form.quantity);
+      data.append("expiryDate", form.expiryDate);
+      data.append("location", form.location);
+      data.append("message", form.message);
+      data.append("cookedTime", form.cookedTime);
+      data.append("consumeBy", form.consumeBy);
+      data.append("allergens", form.allergens);
+      data.append("latitude", form.latitude);
+      data.append("longitude", form.longitude);
 
-      setFormData({
+      // correct backend fields
+      data.append("type", "snacks");
+      data.append("userId", user._id);
+
+      if (image) data.append("image", image);
+
+      await axios.post("http://localhost:5000/api/donate", data);
+
+      alert("Snacks donated successfully");
+
+      // reset form
+      setForm({
         foodName: "",
         quantity: "",
         expiryDate: "",
         location: "",
         message: "",
+        cookedTime: "",
+        consumeBy: "",
+        allergens: "",
       });
+      setImage(null);
     } catch (error) {
-      alert("Something went wrong ");
       console.error(error);
+      alert("Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -52,49 +86,123 @@ const AddSnacks = () => {
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <input
-            type="text"
             name="foodName"
+            value={form.foodName}
+            onChange={handleChange}
             placeholder="Snack Name (Biscuits, Fruits)"
-            value={formData.foodName}
-            onChange={handleChange}
-            className="w-full border rounded-lg p-3"
             required
+            className="w-full border rounded-lg p-3"
           />
 
           <input
-            type="number"
             name="quantity"
+            type="number"
+            value={form.quantity}
+            onChange={handleChange}
             placeholder="Quantity (Packets)"
-            value={formData.quantity}
-            onChange={handleChange}
-            className="w-full border rounded-lg p-3"
             required
+            className="w-full border rounded-lg p-3"
           />
 
           <input
-            type="date"
             name="expiryDate"
-            value={formData.expiryDate}
+            type="date"
+            value={form.expiryDate}
             onChange={handleChange}
+            className="w-full border rounded-lg p-3"
+            placeholder="Expiry Date"
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-gray-500 mb-1 block">
+                Manufactured/Cooked
+              </label>
+              <input
+                name="cookedTime"
+                type="datetime-local"
+                value={form.cookedTime}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-3"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-500 mb-1 block">
+                Best Before
+              </label>
+              <input
+                name="consumeBy"
+                type="datetime-local"
+                value={form.consumeBy}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-3"
+              />
+            </div>
+          </div>
+
+          <input
+            name="allergens"
+            value={form.allergens}
+            onChange={handleChange}
+            placeholder="Allergens (e.g. Peanuts, Gluten)"
             className="w-full border rounded-lg p-3"
           />
 
-          <input
-            type="text"
-            name="location"
-            placeholder="Pickup Location"
-            value={formData.location}
-            onChange={handleChange}
-            className="w-full border rounded-lg p-3"
-            required
-          />
+          <div className="flex gap-2">
+            <input
+              name="location"
+              value={form.location}
+              onChange={handleChange}
+              placeholder="Pickup Location (Address)"
+              required
+              className="w-full border rounded-lg p-3"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      setForm({
+                        ...form,
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                      });
+                      alert("Location captured! 📍");
+                    },
+                    (error) => {
+                      alert("Error capturing location: " + error.message);
+                    }
+                  );
+                } else {
+                  alert("Geolocation is not supported by this browser.");
+                }
+              }}
+              className="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition"
+              title="Use Current Location"
+            >
+              📍
+            </button>
+          </div>
+          {form.latitude && (
+            <p className="text-xs text-green-600 mt-1">
+              ✅ GPS Coordinates Attached
+            </p>
+          )}
 
           <textarea
-            rows="4"
             name="message"
-            placeholder="Message (packed, sealed, fresh, etc.)"
-            value={formData.message}
+            rows="4"
+            value={form.message}
             onChange={handleChange}
+            placeholder="Message (packed, sealed, fresh, etc.)"
+            className="w-full border rounded-lg p-3"
+          />
+
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files[0])}
             className="w-full border rounded-lg p-3"
           />
 

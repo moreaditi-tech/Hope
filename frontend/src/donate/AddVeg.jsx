@@ -2,38 +2,77 @@ import { useState } from "react";
 import axios from "axios";
 
 const AddVeg = () => {
-  const [foodName, setFoodName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
-  const [location, setLocation] = useState("");
-  const [message, setMessage] = useState("");
+  const [form, setForm] = useState({
+    foodName: "",
+    quantity: "",
+    expiryDate: "",
+    location: "",
+    message: "",
+    cookedTime: "",
+    consumeBy: "",
+    allergens: "",
+    latitude: null,
+    longitude: null,
+  });
+
+  const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // logged-in user
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+
+    if (!user?._id) {
+      alert("Please login first");
+      return;
+    }
 
     try {
-      await axios.post("http://localhost:5000/api/donate", {
-        foodName,
-        quantity,
-        expiryDate,
-        location,
-        message,
-        category: "veg", // 🔥 REQUIRED BY BACKEND
+      setLoading(true);
+
+      const data = new FormData();
+      data.append("foodName", form.foodName);
+      data.append("quantity", form.quantity);
+      data.append("expiryDate", form.expiryDate);
+      data.append("location", form.location);
+      data.append("message", form.message);
+      data.append("cookedTime", form.cookedTime);
+      data.append("consumeBy", form.consumeBy);
+      data.append("allergens", form.allergens);
+      data.append("latitude", form.latitude);
+      data.append("longitude", form.longitude);
+
+      // correct backend fields
+      data.append("type", "veg");
+      data.append("userId", user._id);
+
+      if (image) data.append("image", image);
+
+      await axios.post("http://localhost:5000/api/donate", data);
+
+      alert("Vegetarian food donated successfully");
+
+      // reset form
+      setForm({
+        foodName: "",
+        quantity: "",
+        expiryDate: "",
+        location: "",
+        message: "",
+        cookedTime: "",
+        consumeBy: "",
+        allergens: "",
       });
-
-      alert("Food donated successfully ");
-
-      // clear form
-      setFoodName("");
-      setQuantity("");
-      setExpiryDate("");
-      setLocation("");
-      setMessage("");
+      setImage(null);
     } catch (error) {
       console.error(error);
-      alert("Something went wrong ");
+      const errorMsg = error.response?.data?.message || "Something went wrong";
+      alert(`Error: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -48,46 +87,125 @@ const AddVeg = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
-            type="text"
+            name="foodName"
+            value={form.foodName}
+            onChange={handleChange}
             placeholder="Food Name"
-            value={foodName}
-            onChange={(e) => setFoodName(e.target.value)}
             required
-            className="w-full border rounded-lg p-3 focus:outline-orange-500"
+            className="w-full border rounded-lg p-3"
           />
 
           <input
+            name="quantity"
             type="number"
+            value={form.quantity}
+            onChange={handleChange}
             placeholder="Quantity (plates)"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
             required
-            className="w-full border rounded-lg p-3 focus:outline-orange-500"
+            className="w-full border rounded-lg p-3"
           />
 
           <input
+            name="expiryDate"
             type="date"
-            value={expiryDate}
-            onChange={(e) => setExpiryDate(e.target.value)}
-            required
-            className="w-full border rounded-lg p-3 focus:outline-orange-500"
+            value={form.expiryDate}
+            onChange={handleChange}
+            className="w-full border rounded-lg p-3"
+            placeholder="Expiry Date"
           />
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-gray-500 mb-1 block">
+                Cooked Time
+              </label>
+              <input
+                name="cookedTime"
+                type="datetime-local"
+                value={form.cookedTime}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-3"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-500 mb-1 block">
+                Consume By
+              </label>
+              <input
+                name="consumeBy"
+                type="datetime-local"
+                value={form.consumeBy}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-3"
+              />
+            </div>
+          </div>
+
           <input
-            type="text"
-            placeholder="Pickup Location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            required
-            className="w-full border rounded-lg p-3 focus:outline-orange-500"
+            name="allergens"
+            value={form.allergens}
+            onChange={handleChange}
+            placeholder="Allergens (e.g. Nuts, Dairy, Gluten)"
+            className="w-full border rounded-lg p-3"
           />
+
+          <div className="flex gap-2">
+            <input
+              name="location"
+              value={form.location}
+              onChange={handleChange}
+              placeholder="Pickup Location (Address)"
+              required
+              className="w-full border rounded-lg p-3"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      setForm({
+                        ...form,
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        // Optionally auto-fill address if you had a reverse geocoding API
+                      });
+                      alert("Location captured! 📍");
+                    },
+                    (error) => {
+                      alert("Error capturing location: " + error.message);
+                    }
+                  );
+                } else {
+                  alert("Geolocation is not supported by this browser.");
+                }
+              }}
+              className="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition"
+              title="Use Current Location"
+            >
+              📍
+            </button>
+          </div>
+          {form.latitude && (
+            <p className="text-xs text-green-600 mt-1">
+              ✅ GPS Coordinates Attached
+            </p>
+          )}
 
           <textarea
+            name="message"
             rows="4"
+            value={form.message}
+            onChange={handleChange}
             placeholder="Message for receiver (fresh, homemade, etc.)"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="w-full border rounded-lg p-3 focus:outline-orange-500"
+            className="w-full border rounded-lg p-3"
+          />
+
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files[0])}
+            className="w-full border rounded-lg p-3"
           />
 
           <button
@@ -104,4 +222,3 @@ const AddVeg = () => {
 };
 
 export default AddVeg;
-
